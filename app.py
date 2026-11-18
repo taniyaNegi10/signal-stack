@@ -1,4 +1,3 @@
-
 import streamlit as st
 
 from database import initialize_database, get_connection
@@ -307,14 +306,99 @@ def get_company_reports(company_id):
 companies = company_service.get_all_companies()
 
 if not companies:
-    st.warning("No companies found. Please add a company first.")
+    st.markdown(
+        '<div class="eyebrow">FIRST-TIME SETUP</div>',
+        unsafe_allow_html=True
+    )
+
+    st.title("Welcome to Signal Stack")
+
+    st.write(
+        "Create your first company workspace to start managing sources, "
+        "capturing business context and generating intelligence reports."
+    )
+
+    with st.form("initial_company_setup"):
+
+        company_name = st.text_input(
+            "Company Name",
+            placeholder="e.g. MeetUniversity"
+        )
+
+        company_website = st.text_input(
+            "Company Website",
+            placeholder="https://example.com"
+        )
+
+        company_industry = st.text_input(
+            "Industry",
+            placeholder="e.g. Education Technology"
+        )
+
+        submitted = st.form_submit_button(
+            "Create Company",
+            use_container_width=True
+        )
+
+    if submitted:
+
+        name_value = company_name.strip()
+        website_value = company_website.strip()
+        industry_value = company_industry.strip()
+
+        if not name_value or not website_value or not industry_value:
+
+            st.error("Please complete all three fields.")
+
+        elif not (
+            website_value.startswith("https://")
+            or website_value.startswith("http://")
+        ):
+
+            st.error(
+                "Please enter a website beginning with http:// or https://."
+            )
+
+        else:
+
+            try:
+
+                company_service.add_company(
+                    name_value,
+                    website_value,
+                    industry_value
+                )
+
+                # Re-read the database instead of relying on the service's
+                # return value, which may be None for duplicate websites.
+                companies = company_service.get_all_companies()
+
+                if any(
+                    company.get("website") == website_value
+                    for company in companies
+                ):
+
+                    st.success("Company workspace created successfully.")
+                    st.rerun()
+
+                else:
+
+                    st.error(
+                        "The company was not created. This website may "
+                        "already be registered."
+                    )
+
+            except Exception as error:
+
+                st.error(f"Could not create the company: {error}")
+
     st.stop()
+
 
 company_options = {
     f"{company['name']} (ID: {company['id']})": company["id"]
     for company in companies
 }
-
 
 # ==================================================
 # 5. SIDEBAR
@@ -532,6 +616,7 @@ elif page == "Company Interview":
             initial_answer = existing_answer["answer"] or ""
             answer_id = existing_answer["id"]
             status = "Answered"
+
         else:
             initial_answer = ""
             answer_id = None
@@ -587,6 +672,7 @@ elif page == "Company Interview":
                         if success:
                             st.success("Answer saved successfully!")
                             st.rerun()
+
                         else:
                             st.error("Could not update the answer.")
 
@@ -611,8 +697,7 @@ elif page == "Company Interview":
         "SIGNAL STACK · COMPANY INTELLIGENCE PLATFORM"
     )
 
-
-# ==================================================
+    # ==================================================
 # 9. SOURCE MANAGER PAGE
 # ==================================================
 
@@ -822,6 +907,7 @@ elif page == "Internal Documents":
         ):
 
             try:
+
                 result = upload_service.upload_file(
                     company_id,
                     uploaded_file
@@ -920,6 +1006,7 @@ elif page == "Internal Documents":
                     if deleted:
                         st.success("Document deleted successfully.")
                         st.rerun()
+
                     else:
                         st.error("Document could not be deleted.")
 
